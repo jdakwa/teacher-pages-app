@@ -1,10 +1,10 @@
 'use server';
 
-import { GenerationRequest, GenerationResponse, GeneratedContent, ResourceData } from '@/lib/teacherpages/types';
-import { validateGenerationRequest, sanitizeGenerationRequest } from '@/lib/teacherpages/validators';
-import { generatePrompt, generatePromptFromResourceData } from '@/lib/teacherpages/promptGenerator';
-import { callOpenAIWithRetry, callOpenAIWithResourceDataAndRetry } from '@/lib/teacherpages/openaiCaller';
-import { getTemplate } from '@/lib/teacherpages/templates';
+import { GenerationRequest, GenerationResponse, GeneratedContent, ResourceData } from './teacherpages/types';
+import { validateGenerationRequest, sanitizeGenerationRequest } from './teacherpages/validators';
+import { generatePrompt, generatePromptFromResourceData } from './teacherpages/promptGenerator';
+import { callOpenAIWithRetry, callOpenAIWithResourceDataAndRetry } from './teacherpages/openaiCaller';
+import { getTemplate } from './teacherpages/templates';
 
 export async function generateTeacherResource(request: GenerationRequest): Promise<GenerationResponse> {
   try {
@@ -179,7 +179,7 @@ function generateRequestId(): string {
 // Helper function to get available templates
 export async function getAvailableTemplates() {
   try {
-    const { getAllTemplates } = await import('@/app/lib/teacherpages/templates');
+    const { getAllTemplates } = await import('./teacherpages/templates');
     return getAllTemplates();
   } catch (error) {
     console.error('Error getting templates:', error);
@@ -190,7 +190,7 @@ export async function getAvailableTemplates() {
 // Helper function to get available states
 export async function getAvailableStates() {
   try {
-    const { getAvailableStates: getStates } = await import('@/app/lib/teacherpages/standards');
+    const { getAvailableStates: getStates } = await import('./teacherpages/standards');
     return getStates();
   } catch (error) {
     console.error('Error getting states:', error);
@@ -201,7 +201,7 @@ export async function getAvailableStates() {
 // Helper function to get available subjects for a state
 export async function getAvailableSubjects(state: string) {
   try {
-    const { getAvailableSubjects: getSubjects } = await import('@/app/lib/teacherpages/standards');
+    const { getAvailableSubjects: getSubjects } = await import('./teacherpages/standards');
     return getSubjects(state);
   } catch (error) {
     console.error('Error getting subjects:', error);
@@ -212,7 +212,7 @@ export async function getAvailableSubjects(state: string) {
 // Helper function to get available grades for a state and subject
 export async function getAvailableGrades(state: string, subject: string) {
   try {
-    const { getAvailableGrades: getGrades } = await import('@/app/lib/teacherpages/standards');
+    const { getAvailableGrades: getGrades } = await import('./teacherpages/standards');
     return getGrades(state, subject);
   } catch (error) {
     console.error('Error getting grades:', error);
