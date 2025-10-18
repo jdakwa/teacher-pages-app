@@ -2,7 +2,7 @@ import { OpenAIResponse } from './types';
 import { generateSystemPrompt, generatePromptFromResourceData } from './promptGenerator';
 import { ResourceData } from './types';
 
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
