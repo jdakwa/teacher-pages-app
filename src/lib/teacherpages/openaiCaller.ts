@@ -2,52 +2,49 @@ import { OpenAIResponse } from './types';
 import { generateSystemPrompt, generatePromptFromResourceData } from './promptGenerator';
 import { ResourceData } from './types';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
+const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
 export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
-  if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
+  if (!API_GATEWAY_KEY) {
+    throw new Error('API Gateway key is not configured');
   }
 
   try {
     const systemPrompt = generateSystemPrompt();
+    const fullPrompt = `${systemPrompt}\n\nUser Request: ${prompt}`;
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(API_GATEWAY_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${API_GATEWAY_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        prompt: fullPrompt,
         model: OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
         max_tokens: 2000,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
     
+    // Check if the response is successful
+    if (!data.success) {
+      throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+    }
+    
     // Extract the content from the response
-    const content = data.choices[0]?.message?.content;
+    const content = data.output;
     if (!content) {
-      throw new Error('No content received from OpenAI');
+      throw new Error('No content received from API Gateway');
     }
 
     // Parse the JSON content
@@ -55,23 +52,23 @@ export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
     try {
       parsedContent = JSON.parse(content);
     } catch (parseError) {
-      throw new Error(`Failed to parse OpenAI response as JSON: ${parseError}`);
+      throw new Error(`Failed to parse API Gateway response as JSON: ${parseError}`);
     }
 
     return {
       content: parsedContent,
       usage: {
-        prompt_tokens: data.usage?.prompt_tokens || 0,
-        completion_tokens: data.usage?.completion_tokens || 0,
-        total_tokens: data.usage?.total_tokens || 0,
+        prompt_tokens: data.usage?.inputTokens || 0,
+        completion_tokens: data.usage?.outputTokens || 0,
+        total_tokens: (data.usage?.inputTokens || 0) + (data.usage?.outputTokens || 0),
       }
     };
 
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`OpenAI API call failed: ${error.message}`);
+      throw new Error(`API Gateway call failed: ${error.message}`);
     }
-    throw new Error('OpenAI API call failed with unknown error');
+    throw new Error('API Gateway call failed with unknown error');
   }
 }
 
@@ -99,49 +96,45 @@ export async function callOpenAIWithRetry(prompt: string, maxRetries: number = 3
 }
 
 export async function callOpenAIWithResourceData(resourceData: ResourceData, templateName: string = 'WorksheetTemplate'): Promise<OpenAIResponse> {
-  if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
+  if (!API_GATEWAY_KEY) {
+    throw new Error('API Gateway key is not configured');
   }
 
   try {
     const systemPrompt = generateSystemPrompt();
     const userPrompt = generatePromptFromResourceData(resourceData, templateName);
+    const fullPrompt = `${systemPrompt}\n\nUser Request: ${userPrompt}`;
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(API_GATEWAY_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${API_GATEWAY_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        prompt: fullPrompt,
         model: OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        temperature: 0.7,
         max_tokens: 2000,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
     
+    // Check if the response is successful
+    if (!data.success) {
+      throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+    }
+    
     // Extract the content from the response
-    const content = data.choices[0]?.message?.content;
+    const content = data.output;
     if (!content) {
-      throw new Error('No content received from OpenAI');
+      throw new Error('No content received from API Gateway');
     }
 
     // Parse the JSON content
@@ -149,23 +142,23 @@ export async function callOpenAIWithResourceData(resourceData: ResourceData, tem
     try {
       parsedContent = JSON.parse(content);
     } catch (parseError) {
-      throw new Error(`Failed to parse OpenAI response as JSON: ${parseError}`);
+      throw new Error(`Failed to parse API Gateway response as JSON: ${parseError}`);
     }
 
     return {
       content: parsedContent,
       usage: {
-        prompt_tokens: data.usage?.prompt_tokens || 0,
-        completion_tokens: data.usage?.completion_tokens || 0,
-        total_tokens: data.usage?.total_tokens || 0,
+        prompt_tokens: data.usage?.inputTokens || 0,
+        completion_tokens: data.usage?.outputTokens || 0,
+        total_tokens: (data.usage?.inputTokens || 0) + (data.usage?.outputTokens || 0),
       }
     };
 
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`OpenAI API call failed: ${error.message}`);
+      throw new Error(`API Gateway call failed: ${error.message}`);
     }
-    throw new Error('OpenAI API call failed with unknown error');
+    throw new Error('API Gateway call failed with unknown error');
   }
 }
 
@@ -201,6 +194,6 @@ export function estimateTokenCost(tokens: number, model: string = OPENAI_MODEL):
     'gpt-3.5-turbo': 0.0005
   };
   
-  const baseCost = costPer1K[model as keyof typeof costPer1K] || costPer1K['gpt-4o-mini'];
+  const baseCost = costPer1K[model as keyof typeof costPer1K] || costPer1K['gpt-3.5-turbo'];
   return (tokens / 1000) * baseCost;
-} 
+}
