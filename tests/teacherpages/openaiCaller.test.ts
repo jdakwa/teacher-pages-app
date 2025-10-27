@@ -67,7 +67,7 @@ describe('TeacherPages OpenAI Caller', () => {
         expect.objectContaining({
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer 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',
+            'Authorization': 'Bearer mock-api-key',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
