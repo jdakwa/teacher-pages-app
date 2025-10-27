@@ -24,4 +24,4 @@ export function getAllTemplates(): JSONTemplate[] {
 
 export function addTemplate(id: string, template: JSONTemplate): void {
   TEMPLATES[id] = template;
-} 
+}

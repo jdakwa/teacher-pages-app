@@ -14,7 +14,7 @@ export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
   try {
     const systemPrompt = generateSystemPrompt();
     const fullPrompt = `${systemPrompt}\n\nUser Request: ${prompt}`;
-    
+
     const response = await fetch(API_GATEWAY_URL, {
       method: 'POST',
       headers: {
@@ -35,19 +35,16 @@ export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
     }
 
     const data = await response.json();
-    
-    // Check if the response is successful
+
     if (!data.success) {
       throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
     }
-    
-    // Extract the content from the response
+
     const content = data.output;
     if (!content) {
       throw new Error('No content received from API Gateway');
     }
 
-    // Parse the JSON content
     let parsedContent;
     try {
       parsedContent = JSON.parse(content);
@@ -74,24 +71,22 @@ export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
 
 export async function callOpenAIWithRetry(prompt: string, maxRetries: number = 3): Promise<OpenAIResponse> {
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await callOpenAI(prompt);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      
-      // If this is the last attempt, throw the error
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
-      // Wait before retrying (exponential backoff)
+
       const waitTime = Math.pow(2, attempt) * 1000;
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
-  
+
   throw lastError!;
 }
 
@@ -104,7 +99,7 @@ export async function callOpenAIWithResourceData(resourceData: ResourceData, tem
     const systemPrompt = generateSystemPrompt();
     const userPrompt = generatePromptFromResourceData(resourceData, templateName);
     const fullPrompt = `${systemPrompt}\n\nUser Request: ${userPrompt}`;
-    
+
     const response = await fetch(API_GATEWAY_URL, {
       method: 'POST',
       headers: {
@@ -125,19 +120,16 @@ export async function callOpenAIWithResourceData(resourceData: ResourceData, tem
     }
 
     const data = await response.json();
-    
-    // Check if the response is successful
+
     if (!data.success) {
       throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
     }
-    
-    // Extract the content from the response
+
     const content = data.output;
     if (!content) {
       throw new Error('No content received from API Gateway');
     }
 
-    // Parse the JSON content
     let parsedContent;
     try {
       parsedContent = JSON.parse(content);
@@ -164,36 +156,33 @@ export async function callOpenAIWithResourceData(resourceData: ResourceData, tem
 
 export async function callOpenAIWithResourceDataAndRetry(resourceData: ResourceData, templateName: string = 'WorksheetTemplate', maxRetries: number = 3): Promise<OpenAIResponse> {
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await callOpenAIWithResourceData(resourceData, templateName);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      
-      // If this is the last attempt, throw the error
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
-      // Wait before retrying (exponential backoff)
+
       const waitTime = Math.pow(2, attempt) * 1000;
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
-  
+
   throw lastError!;
 }
 
 export function estimateTokenCost(tokens: number, model: string = OPENAI_MODEL): number {
-  // Rough cost estimates per 1K tokens (as of 2024)
   const costPer1K = {
     'gpt-4o': 0.005,
     'gpt-4o-mini': 0.00015,
     'gpt-4-turbo': 0.01,
     'gpt-3.5-turbo': 0.0005
   };
-  
-  const baseCost = costPer1K[model as keyof typeof costPer1K] || costPer1K['gpt-3.5-turbo'];
+
+  const baseCost = costPer1K[model as keyof typeof costPer1K] || costPer1K['gpt-4o-mini'];
   return (tokens / 1000) * baseCost;
 }

@@ -81,6 +81,17 @@ CONTEXT:
 
 TASK: Generate a ${resourceData.resourceType} with exactly 5 questions about ${resourceData.topic}. Include clear instructions and an answer key. Make the questions appropriate for ${resourceData.grade} grade level in ${resourceData.level}.
 
+MATHEMATICAL NOTATION: Use proper mathematical notation in your questions and answers:
+- Use ^ for superscripts (e.g., x^2, H^+, SO4^2-)
+- Use _ for subscripts (e.g., H_2O, CO_2, Ca(OH)_2)
+- Use -> for chemical reactions (e.g., 2H_2 + O_2 -> 2H_2O)
+- Use <-> for reversible reactions (e.g., H_2O <-> H^+ + OH^-)
+- Use sqrt() for square roots (e.g., sqrt(16))
+- Use Greek letters when appropriate (alpha, beta, gamma, etc.)
+- Use fractions like 1/2, 3/4 when needed
+- For chemical formulas, write them properly: H2O, CO2, CaCO3, H2SO4
+- For ions, include charges: H^+, OH^-, SO4^2-, Ca^2+
+
 IMPORTANT: Your response must be structured as a JSON object with the following keys:
 ${template.placeholders.map(placeholder => `- ${placeholder}`).join('\n')}
 
@@ -176,6 +187,18 @@ Key responsibilities:
 - Follow template specifications exactly
 - Provide structured, consistent output
 - Ensure educational value and accuracy
+- Use proper mathematical and scientific notation
+
+MATHEMATICAL NOTATION GUIDELINES:
+- Use ^ for superscripts (x^2, H^+, SO4^2-)
+- Use _ for subscripts (H_2O, CO_2, Ca(OH)_2)
+- Use -> for chemical reactions and arrows
+- Use <-> for reversible reactions
+- Use sqrt() for square roots
+- Use Greek letters (alpha, beta, gamma, etc.)
+- Use proper fractions (1/2, 3/4)
+- Write chemical formulas correctly: H2O, CO2, CaCO3, H2SO4
+- Include ion charges: H^+, OH^-, SO4^2-, Ca^2+
 
 Always respond with valid JSON that matches the requested template structure.`;
-} 
+}
