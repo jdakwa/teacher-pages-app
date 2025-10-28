@@ -17,9 +17,10 @@ import {
 } from '@mui/material';
 import { PDFViewer } from '@react-pdf/renderer';
 import WorksheetTemplate from '../templates/WorksheetTemplate';
-import { curriculumStructure } from '../../constants/resource_generator';
-import { callOpenAIWithResourceDataAndRetry } from '@/app/lib/teacherpages/openaiCaller';
-import { ResourceData } from '@/app/lib/teacherpages/types';
+import { curriculumStructure } from '../constants/resource_generator';
+import { renderTextWithMath } from './MathExpression';
+// import { callOpenAIWithResourceDataAndRetry } from '../lib/teacherpages/openaiCaller';
+import { ResourceData } from '../lib/teacherpages/types';
 
 export default function ResourceGenerator() {
   // State management for cascading dropdowns
@@ -178,13 +179,27 @@ export default function ResourceGenerator() {
 
       // Generate AI content
       console.log('Generating AI content for:', resourceData);
-      const aiResponse = await callOpenAIWithResourceDataAndRetry(resourceData);
-      console.log('AI response received:', aiResponse);
       
-      setGeneratedContent(aiResponse.content);
+      const response = await fetch('/api/generate-resource', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resourceData),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate resource');
+      }
+      
+      console.log('AI response received:', result);
+      
+      setGeneratedContent(result.content);
       setHasGeneratedContent(true);
 
-      console.log('AI content generated successfully:', resourceData, aiResponse.content);
+      console.log('AI content generated successfully:', resourceData, result.content);
     } catch (error) {
       console.error('Error generating resource:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -393,7 +408,7 @@ export default function ResourceGenerator() {
                 size="large"
                 fullWidth
                 onClick={handleGenerateResource}
-                disabled={!selectedSubject || !selectedMainTopic || !selectedSubTopic || !selectedConcept || isGenerating}
+                  disabled={!selectedSubject || !selectedMainTopic || !selectedSubTopic || !selectedConcept || isGenerating}
                 sx={{
                   bgcolor: '#0C41FF',
                   color: 'white',
@@ -736,6 +751,7 @@ export default function ResourceGenerator() {
                 <Button
                   variant="outlined"
                   size="large"
+                  disabled={!generatedContent}
                   onClick={async () => {
                     try {
                       const { pdf } = await import('@react-pdf/renderer');

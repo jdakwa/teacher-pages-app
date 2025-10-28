@@ -18,7 +18,7 @@ import {
 } from '@mui/icons-material';
 import Link from 'next/link';
 
-import ResourceGenerator from '@/components/ResourceGenerator';
+import ResourceGenerator from '../../components/ResourceGenerator';
 
 
 
