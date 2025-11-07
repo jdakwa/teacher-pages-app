@@ -4,7 +4,7 @@ import { ResourceData } from './types';
 
 const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
 // Hardcoded API key
-const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY || 'sk-avalern-7f3a9b2c4d5e6f8a1b3c4d5e6f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6';
+const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
 export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
