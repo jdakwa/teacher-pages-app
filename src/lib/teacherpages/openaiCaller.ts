@@ -3,7 +3,8 @@ import { generateSystemPrompt, generatePromptFromResourceData } from './promptGe
 import { ResourceData } from './types';
 
 const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
-const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY;
+// Hardcoded API key
+const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY || 'sk-avalern-7f3a9b2c4d5e6f8a1b3c4d5e6f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
 export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
@@ -160,6 +161,84 @@ export async function callOpenAIWithResourceDataAndRetry(resourceData: ResourceD
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await callOpenAIWithResourceData(resourceData, templateName);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+
+      if (attempt === maxRetries) {
+        throw lastError;
+      }
+
+      const waitTime = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+
+  throw lastError!;
+}
+
+// Version that accepts API key as parameter (for user-provided keys)
+export async function callOpenAIWithResourceDataAndRetryWithKey(
+  resourceData: ResourceData, 
+  templateName: string = 'WorksheetTemplate', 
+  maxRetries: number = 3,
+  apiKey: string
+): Promise<OpenAIResponse> {
+  const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
+  const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+
+  let lastError: Error;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const systemPrompt = generateSystemPrompt();
+      const userPrompt = generatePromptFromResourceData(resourceData, templateName);
+      const fullPrompt = `${systemPrompt}\n\nUser Request: ${userPrompt}`;
+
+      const response = await fetch(API_GATEWAY_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          model: OPENAI_MODEL,
+          max_tokens: 2000,
+          temperature: 0.7
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+      }
+
+      const content = data.output;
+      if (!content) {
+        throw new Error('No content received from API Gateway');
+      }
+
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        throw new Error(`Failed to parse API Gateway response as JSON: ${parseError}`);
+      }
+
+      return {
+        content: parsedContent,
+        usage: {
+          prompt_tokens: data.usage?.inputTokens || 0,
+          completion_tokens: data.usage?.outputTokens || 0,
+          total_tokens: (data.usage?.inputTokens || 0) + (data.usage?.outputTokens || 0),
+        }
+      };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
 
