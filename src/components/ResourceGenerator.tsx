@@ -15,8 +15,8 @@ import {
   MenuItem,
   Slider
 } from '@mui/material';
-import { PDFViewer } from '@react-pdf/renderer';
-import WorksheetTemplate from '../templates/WorksheetTemplate';
+import { HTMLWorksheetTemplate } from './HTMLWorksheetTemplate';
+import { downloadPDFFromHTML } from '../lib/generatePDFFromHTML';
 import { curriculumStructure } from '../constants/resource_generator';
 import { renderTextWithMath } from './MathExpression';
 // import { callOpenAIWithResourceDataAndRetry } from '../lib/teacherpages/openaiCaller';
@@ -179,7 +179,7 @@ export default function ResourceGenerator() {
 
       // Generate AI content
       console.log('Generating AI content for:', resourceData);
-      
+
       const response = await fetch('/api/generate-resource', {
         method: 'POST',
         headers: {
@@ -187,15 +187,15 @@ export default function ResourceGenerator() {
         },
         body: JSON.stringify(resourceData),
       });
-      
+
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate resource');
       }
-      
+
       console.log('AI response received:', result);
-      
+
       setGeneratedContent(result.content);
       setHasGeneratedContent(true);
 
@@ -408,7 +408,7 @@ export default function ResourceGenerator() {
                 size="large"
                 fullWidth
                 onClick={handleGenerateResource}
-                  disabled={!selectedSubject || !selectedMainTopic || !selectedSubTopic || !selectedConcept || isGenerating}
+                disabled={!selectedSubject || !selectedMainTopic || !selectedSubTopic || !selectedConcept || isGenerating}
                 sx={{
                   bgcolor: '#0C41FF',
                   color: 'white',
@@ -598,7 +598,7 @@ export default function ResourceGenerator() {
               </Typography>
 
 
-              
+
               {/* Edit Mode Toggle */}
               <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
                 {!isEditMode ? (
@@ -667,14 +667,14 @@ export default function ResourceGenerator() {
                   minHeight: '600px'
                 }}
               >
-                                  <Typography variant="h6" sx={{ mb: 3, color: '#0C41FF', fontFamily: 'Poppins, sans-serif' }}>
-                    ✏️ Edit Mode - Click on any text to modify
-                  </Typography>
-                  
+                <Typography variant="h6" sx={{ mb: 3, color: '#0C41FF', fontFamily: 'Poppins, sans-serif' }}>
+                  ✏️ Edit Mode - Click on any text to modify
+                </Typography>
 
-                  
 
-                
+
+
+
                 {editableContent && Object.entries(editableContent).map(([key, value]) => (
                   <Box key={key} sx={{ mb: 3 }}>
                     <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'text.secondary', fontFamily: 'Poppins, sans-serif' }}>
@@ -708,22 +708,19 @@ export default function ResourceGenerator() {
                   sx={{
                     border: '1px solid #e0e0e0',
                     borderRadius: 2,
-                    overflow: 'hidden',
+                    overflow: 'auto',
                     height: '600px',
-                    width: '100%'
+                    width: '100%',
+                    bgcolor: '#f5f5f5',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    padding: 2
                   }}
                 >
-                  <PDFViewer
-                    style={{
-                      width: '100%',
-                      height: '100%'
-                    }}
-                  >
-                    <WorksheetTemplate 
-                      resourceData={previewResourceData} 
-                      generatedContent={generatedContent}
-                    />
-                  </PDFViewer>
+                  <HTMLWorksheetTemplate
+                    resourceData={previewResourceData}
+                    generatedContent={generatedContent}
+                  />
                 </Box>
               ) : (
                 <Box
@@ -754,22 +751,8 @@ export default function ResourceGenerator() {
                   disabled={!generatedContent}
                   onClick={async () => {
                     try {
-                      const { pdf } = await import('@react-pdf/renderer');
-                      
-                      const doc = <WorksheetTemplate 
-                        resourceData={previewResourceData} 
-                        generatedContent={generatedContent}
-                      />;
-
-                      const blob = await pdf(doc).toBlob();
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `${previewResourceData.subject}-${previewResourceData.topic}-worksheet.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
+                      const filename = `${previewResourceData.subject}-${previewResourceData.topic}-worksheet.pdf`;
+                      await downloadPDFFromHTML('worksheet-content', filename);
                     } catch (error) {
                       console.error('Error downloading PDF:', error);
                       alert('Error downloading PDF. Please try again.');
@@ -792,7 +775,7 @@ export default function ResourceGenerator() {
                 >
                   📥 Download PDF
                 </Button>
-                
+
                 <Button
                   variant="outlined"
                   size="large"

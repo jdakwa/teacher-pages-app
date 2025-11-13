@@ -10,18 +10,18 @@ export function generatePrompt(request: GenerationRequest): string {
 
   // Get relevant state standards
   const standards = getRelevantStandards(request.state, request.subjectType, request.gradeLevel);
-  
+
   // Build the base prompt
   let prompt = buildBasePrompt(request, template);
-  
+
   // Add state standards if available
   if (standards.length > 0) {
     prompt += buildStandardsSection(standards);
   }
-  
+
   // Add output format requirements
   prompt += buildOutputFormatRequirements(template);
-  
+
   return prompt;
 }
 
@@ -33,17 +33,17 @@ export function generatePromptFromResourceData(resourceData: ResourceData, templ
 
   // No state filtering for standards; use general guidance only
   const standards: string[] = [];
-  
+
   // Build the base prompt
   let prompt = buildBasePromptFromResourceData(resourceData, template);
-  
+
   // Add general standards note and difficulty guidance
   prompt += buildGeneralStandardsNote();
   prompt += buildDifficultyGuidance(resourceData.difficulty ?? 3);
-  
+
   // Add output format requirements
   prompt += buildOutputFormatRequirements(template);
-  
+
   return prompt;
 }
 
@@ -82,15 +82,21 @@ CONTEXT:
 TASK: Generate a ${resourceData.resourceType} with exactly 5 questions about ${resourceData.topic}. Include clear instructions and an answer key. Make the questions appropriate for ${resourceData.grade} grade level in ${resourceData.level}.
 
 MATHEMATICAL NOTATION: Use proper mathematical notation in your questions and answers:
-- Use ^ for superscripts (e.g., x^2, H^+, SO4^2-)
-- Use _ for subscripts (e.g., H_2O, CO_2, Ca(OH)_2)
-- Use -> for chemical reactions (e.g., 2H_2 + O_2 -> 2H_2O)
-- Use <-> for reversible reactions (e.g., H_2O <-> H^+ + OH^-)
-- Use sqrt() for square roots (e.g., sqrt(16))
-- Use Greek letters when appropriate (alpha, beta, gamma, etc.)
-- Use fractions like 1/2, 3/4 when needed
-- For chemical formulas, write them properly: H2O, CO2, CaCO3, H2SO4
-- For ions, include charges: H^+, OH^-, SO4^2-, Ca^2+
+- Inverse trig functions: sin^(-1), cos^(-1), tan^(-1) (NOT arcsin, arccos, arctan)
+- Exponents: x^2, x^3, e^(2x) (use ^ for powers)
+- Subscripts: H_2O, CO_2, Ca(OH)_2 (use _ for subscripts)
+- Square roots: sqrt(16), sqrt(x) (use sqrt)
+- Fractions: 1/2, 3/4, 2/3 (simple fractions)
+- Greek letters: pi, theta, alpha, beta (spell out)
+- Chemical reactions: -> for reactions, <-> for reversible
+- Ion charges: H^+, OH^-, SO4^2-, Ca^2+
+
+EXAMPLES:
+✓ "Find sin^(-1)(1/2)" - CORRECT
+✓ "If cos^(-1)(x) = pi/3" - CORRECT  
+✓ "Calculate tan^(-1)(sqrt(3))" - CORRECT
+✗ "Find arcsin(1/2)" - WRONG (use sin^(-1) instead)
+✗ "Calculate arctan(√3)" - WRONG (use tan^(-1)(sqrt(3)) instead)
 
 IMPORTANT: Your response must be structured as a JSON object with the following keys:
 ${template.placeholders.map(placeholder => `- ${placeholder}`).join('\n')}
@@ -190,15 +196,16 @@ Key responsibilities:
 - Use proper mathematical and scientific notation
 
 MATHEMATICAL NOTATION GUIDELINES:
-- Use ^ for superscripts (x^2, H^+, SO4^2-)
-- Use _ for subscripts (H_2O, CO_2, Ca(OH)_2)
-- Use -> for chemical reactions and arrows
-- Use <-> for reversible reactions
-- Use sqrt() for square roots
-- Use Greek letters (alpha, beta, gamma, etc.)
-- Use proper fractions (1/2, 3/4)
-- Write chemical formulas correctly: H2O, CO2, CaCO3, H2SO4
-- Include ion charges: H^+, OH^-, SO4^2-, Ca^2+
+- Inverse trig functions: sin^(-1), cos^(-1), tan^(-1) (NOT arcsin, arccos, arctan)
+- Exponents: x^2, x^3, e^(2x) (use ^ for powers)
+- Subscripts: H_2O, CO_2, Ca(OH)_2 (use _ for subscripts)
+- Square roots: sqrt(16), sqrt(x) (use sqrt, not √)
+- Fractions: 1/2, 3/4, 2/3 (simple fractions)
+- Greek letters: pi, theta, alpha, beta (spell out, not symbols)
+- Chemical reactions: -> for reactions, <-> for reversible
+- Ion charges: H^+, OH^-, SO4^2-, Ca^2+
+
+CRITICAL: Always use sin^(-1), cos^(-1), tan^(-1) format, NEVER arcsin, arccos, arctan!
 
 Always respond with valid JSON that matches the requested template structure.`;
 }
