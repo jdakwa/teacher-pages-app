@@ -6,8 +6,8 @@ export async function POST(request: NextRequest) {
   try {
     const resourceData: ResourceData = await request.json();
     
-    // Use hardcoded key or environment variable
-    const apiGatewayKey = process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
+    // Use environment variable (prefer AI_GATEWAY_API_KEY, fallback to API_GATEWAY_KEY for backward compatibility)
+    const apiGatewayKey = process.env.AI_GATEWAY_API_KEY || process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
     
     const response = await callOpenAIWithResourceDataAndRetryWithKey(resourceData, 'WorksheetTemplate', 3, apiGatewayKey);
     

@@ -2,9 +2,18 @@ import { OpenAIResponse } from './types';
 import { generateSystemPrompt, generatePromptFromResourceData } from './promptGenerator';
 import { ResourceData } from './types';
 
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
-// Hardcoded API key
-const API_GATEWAY_KEY = process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
+// Construct API Gateway URL - support both base URL and full URL
+const getApiGatewayUrl = () => {
+  const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com';
+  // If URL already includes /api/generate, use it as-is; otherwise append it
+  if (baseUrl.includes('/api/generate')) {
+    return baseUrl;
+  }
+  return `${baseUrl.replace(/\/$/, '')}/api/generate`;
+};
+const API_GATEWAY_URL = getApiGatewayUrl();
+// Hardcoded API key (fallback for backward compatibility)
+const API_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY || process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
 export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
@@ -25,20 +34,18 @@ export async function callOpenAI(prompt: string): Promise<OpenAIResponse> {
       body: JSON.stringify({
         prompt: fullPrompt,
         model: OPENAI_MODEL,
-        max_tokens: 2000,
+        maxTokens: 2000,
         temperature: 0.7
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-    }
-
     const data = await response.json();
 
-    if (!data.success) {
-      throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+    if (!response.ok || !data.success) {
+      // Handle AI Gateway error response format
+      const errorCode = data.code || 'UNKNOWN_ERROR';
+      const errorMessage = data.error || 'Unknown error';
+      throw new Error(`AI Gateway error: ${errorMessage} (${errorCode})`);
     }
 
     const content = data.output;
@@ -79,6 +86,14 @@ export async function callOpenAIWithRetry(prompt: string, maxRetries: number = 3
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
 
+      // Don't retry on client errors (400, 401) - these are validation/auth errors
+      if (lastError.message.includes('VALIDATION_ERROR') || 
+          lastError.message.includes('MISSING_AUTH_HEADER') ||
+          lastError.message.includes('MISSING_API_KEY') ||
+          lastError.message.includes('UNAUTHORIZED')) {
+        throw lastError;
+      }
+
       if (attempt === maxRetries) {
         throw lastError;
       }
@@ -110,20 +125,18 @@ export async function callOpenAIWithResourceData(resourceData: ResourceData, tem
       body: JSON.stringify({
         prompt: fullPrompt,
         model: OPENAI_MODEL,
-        max_tokens: 2000,
+        maxTokens: 2000,
         temperature: 0.7
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-    }
-
     const data = await response.json();
 
-    if (!data.success) {
-      throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+    if (!response.ok || !data.success) {
+      // Handle AI Gateway error response format
+      const errorCode = data.code || 'UNKNOWN_ERROR';
+      const errorMessage = data.error || 'Unknown error';
+      throw new Error(`AI Gateway error: ${errorMessage} (${errorCode})`);
     }
 
     const content = data.output;
@@ -164,6 +177,14 @@ export async function callOpenAIWithResourceDataAndRetry(resourceData: ResourceD
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
 
+      // Don't retry on client errors (400, 401) - these are validation/auth errors
+      if (lastError.message.includes('VALIDATION_ERROR') || 
+          lastError.message.includes('MISSING_AUTH_HEADER') ||
+          lastError.message.includes('MISSING_API_KEY') ||
+          lastError.message.includes('UNAUTHORIZED')) {
+        throw lastError;
+      }
+
       if (attempt === maxRetries) {
         throw lastError;
       }
@@ -183,7 +204,16 @@ export async function callOpenAIWithResourceDataAndRetryWithKey(
   maxRetries: number = 3,
   apiKey: string
 ): Promise<OpenAIResponse> {
-  const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
+  // Construct API Gateway URL - support both base URL and full URL
+  const getApiGatewayUrl = () => {
+    const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com';
+    // If URL already includes /api/generate, use it as-is; otherwise append it
+    if (baseUrl.includes('/api/generate')) {
+      return baseUrl;
+    }
+    return `${baseUrl.replace(/\/$/, '')}/api/generate`;
+  };
+  const API_GATEWAY_URL = getApiGatewayUrl();
   const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
   let lastError: Error;
@@ -203,20 +233,25 @@ export async function callOpenAIWithResourceDataAndRetryWithKey(
         body: JSON.stringify({
           prompt: fullPrompt,
           model: OPENAI_MODEL,
-          max_tokens: 2000,
+          maxTokens: 2000,
           temperature: 0.7
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API Gateway error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(`API Gateway returned error: ${data.error || 'Unknown error'}`);
+      if (!response.ok || !data.success) {
+        // Handle AI Gateway error response format
+        const errorCode = data.code || 'UNKNOWN_ERROR';
+        const errorMessage = data.error || 'Unknown error';
+        
+        // Don't retry on client errors (400, 401)
+        if (response.status === 400 || response.status === 401) {
+          throw new Error(`AI Gateway error: ${errorMessage} (${errorCode})`);
+        }
+        
+        // For server errors, throw error that can be retried
+        throw new Error(`AI Gateway error: ${errorMessage} (${errorCode})`);
       }
 
       const content = data.output;
@@ -241,6 +276,14 @@ export async function callOpenAIWithResourceDataAndRetryWithKey(
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
+
+      // Don't retry on client errors (400, 401) - these are validation/auth errors
+      if (lastError.message.includes('VALIDATION_ERROR') || 
+          lastError.message.includes('MISSING_AUTH_HEADER') ||
+          lastError.message.includes('MISSING_API_KEY') ||
+          lastError.message.includes('UNAUTHORIZED')) {
+        throw lastError;
+      }
 
       if (attempt === maxRetries) {
         throw lastError;
