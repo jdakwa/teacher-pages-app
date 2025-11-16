@@ -4,7 +4,7 @@ import { ResourceData } from './types';
 
 // Construct API Gateway URL - support both base URL and full URL
 const getApiGatewayUrl = () => {
-  const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com';
+  const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
   // If URL already includes /api/generate, use it as-is; otherwise append it
   if (baseUrl.includes('/api/generate')) {
     return baseUrl;
@@ -12,7 +12,7 @@ const getApiGatewayUrl = () => {
   return `${baseUrl.replace(/\/$/, '')}/api/generate`;
 };
 const API_GATEWAY_URL = getApiGatewayUrl();
-// Hardcoded API key (fallback for backward compatibility)
+// API Gateway key - matches the production key from the curl example
 const API_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY || process.env.API_GATEWAY_KEY || 'ai-gateway-prod-a45e7d4519e9e2dc2e550b4a';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
@@ -206,7 +206,7 @@ export async function callOpenAIWithResourceDataAndRetryWithKey(
 ): Promise<OpenAIResponse> {
   // Construct API Gateway URL - support both base URL and full URL
   const getApiGatewayUrl = () => {
-    const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com';
+    const baseUrl = process.env.AI_GATEWAY_URL || process.env.API_GATEWAY_URL || 'https://aigateway.avalern.com/api/generate';
     // If URL already includes /api/generate, use it as-is; otherwise append it
     if (baseUrl.includes('/api/generate')) {
       return baseUrl;
