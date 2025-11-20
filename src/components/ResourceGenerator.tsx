@@ -16,14 +16,12 @@ import {
   Slider
 } from '@mui/material';
 import { HTMLWorksheetTemplate } from './HTMLWorksheetTemplate';
-import { downloadPDFFromHTML } from '../lib/generatePDFFromHTML';
+import { downloadPDFFromHTML, generatePDFFromHTML } from '../lib/generatePDFFromHTML';
 import { curriculumStructure } from '../constants/resource_generator';
 import { renderTextWithMath } from './MathExpression';
-// import { callOpenAIWithResourceDataAndRetry } from '../lib/teacherpages/openaiCaller';
 import { ResourceData } from '../lib/teacherpages/types';
 
 export default function ResourceGenerator() {
-  // State management for cascading dropdowns
   const [difficulty, setDifficulty] = React.useState<number>(3);
   const [selectedSubject, setSelectedSubject] = React.useState('');
   const [selectedMainTopic, setSelectedMainTopic] = React.useState('');
@@ -35,16 +33,49 @@ export default function ResourceGenerator() {
   const [hasGeneratedContent, setHasGeneratedContent] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [editableContent, setEditableContent] = React.useState<any>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = React.useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = React.useState(false);
 
   const [isClient, setIsClient] = React.useState(false);
-
-  // Handle hydration
   React.useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Get available options based on selections
-  // Difficulty marks for slider (ticks only, no labels)
+  React.useEffect(() => {
+    if (generatedContent && !isEditMode && isClient) {
+      const generatePreview = async () => {
+        setIsGeneratingPreview(true);
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const blob = await generatePDFFromHTML('worksheet-content');
+          const url = URL.createObjectURL(blob);
+
+          if (pdfPreviewUrl) {
+            URL.revokeObjectURL(pdfPreviewUrl);
+          }
+
+          setPdfPreviewUrl(url);
+        } catch (error) {
+          console.error('Error generating PDF preview:', error);
+          alert('Failed to generate PDF preview. The download button will still work.');
+        } finally {
+          setIsGeneratingPreview(false);
+        }
+      };
+
+      generatePreview();
+    }
+  }, [generatedContent, isEditMode, isClient]);
+
+  React.useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
+
   const difficultyMarks = [
     { value: 1 },
     { value: 2 },
@@ -89,7 +120,6 @@ export default function ResourceGenerator() {
     return subTopic?.concepts || [];
   };
 
-  // Handle selection changes
   const handleDifficultyChange = (_: Event, value: number | number[]) => {
     const next = Array.isArray(value) ? value[0] : value;
     setDifficulty(next);
@@ -100,46 +130,43 @@ export default function ResourceGenerator() {
     setSelectedMainTopic('');
     setSelectedSubTopic('');
     setSelectedConcept('');
-    // Don't clear generated content when changing subject
   };
 
   const handleMainTopicChange = (mainTopic: string) => {
     setSelectedMainTopic(mainTopic);
     setSelectedSubTopic('');
     setSelectedConcept('');
-    // Don't clear generated content when changing main topic
   };
 
   const handleSubTopicChange = (subTopic: string) => {
     setSelectedSubTopic(subTopic);
     setSelectedConcept('');
-    // Don't clear generated content when changing sub topic
   };
 
   const handleConceptChange = (concept: string) => {
     setSelectedConcept(concept);
-    // Don't clear generated content when changing concept
   };
 
-  // Handle entering edit mode
   const handleEnterEditMode = () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+
     setIsEditMode(true);
-    setEditableContent(JSON.parse(JSON.stringify(generatedContent))); // Deep copy
+    setEditableContent(JSON.parse(JSON.stringify(generatedContent)));
   };
 
-  // Handle saving edits
   const handleSaveEdits = () => {
     setGeneratedContent(editableContent);
     setIsEditMode(false);
   };
 
-  // Handle canceling edits
   const handleCancelEdits = () => {
     setIsEditMode(false);
     setEditableContent(null);
   };
 
-  // Handle content updates in edit mode
   const handleContentUpdate = (key: string, value: string) => {
     setEditableContent((prev: any) => ({
       ...prev,
@@ -147,18 +174,15 @@ export default function ResourceGenerator() {
     }));
   };
 
-  const handleInsertLaTeX = (latex: string) => {
-    // This will be used to insert LaTeX into the current editing field
-    // For now, we'll just log it - in a real implementation, you'd insert it into the active field
-    console.log('LaTeX to insert:', latex);
-  };
-
-
-
   const handleGenerateResource = async () => {
     if (!selectedSubject || !selectedMainTopic || !selectedSubTopic || !selectedConcept) {
       alert('Please fill in all required fields');
       return;
+    }
+
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
     }
 
     setIsGenerating(true);
@@ -167,18 +191,14 @@ export default function ResourceGenerator() {
     setHasGeneratedContent(false);
 
     try {
-      // Prepare resource data
       const resourceData: ResourceData = {
-        level: 'High School', // Default since we only have high school grades
+        level: 'High School',
         grade: '9-12',
         subject: selectedSubject,
         topic: `${selectedMainTopic} - ${selectedSubTopic} - ${selectedConcept}`,
         resourceType: 'worksheet',
         difficulty,
       };
-
-      // Generate AI content
-      console.log('Generating AI content for:', resourceData);
 
       const response = await fetch('/api/generate-resource', {
         method: 'POST',
@@ -194,12 +214,8 @@ export default function ResourceGenerator() {
         throw new Error(result.error || 'Failed to generate resource');
       }
 
-      console.log('AI response received:', result);
-
       setGeneratedContent(result.content);
       setHasGeneratedContent(true);
-
-      console.log('AI content generated successfully:', resourceData, result.content);
     } catch (error) {
       console.error('Error generating resource:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -656,6 +672,21 @@ export default function ResourceGenerator() {
               </Box>
             </Box>
 
+            <Box
+              sx={{
+                position: 'absolute',
+                left: '-9999px',
+                top: 0,
+                width: '210mm',
+                backgroundColor: '#ffffff'
+              }}
+            >
+              <HTMLWorksheetTemplate
+                resourceData={previewResourceData}
+                generatedContent={generatedContent}
+              />
+            </Box>
+
             {isEditMode ? (
               // Edit Mode Interface
               <Box
@@ -704,30 +735,62 @@ export default function ResourceGenerator() {
             ) : (
               // PDF Preview Mode
               isClient ? (
-                <Box
-                  sx={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 2,
-                    overflow: 'auto',
-                    height: '600px',
-                    width: '100%',
-                    bgcolor: '#f5f5f5',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    padding: 2
-                  }}
-                >
-                  <HTMLWorksheetTemplate
-                    resourceData={previewResourceData}
-                    generatedContent={generatedContent}
-                  />
-                </Box>
+                pdfPreviewUrl ? (
+                  <Box
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      height: '800px',
+                      width: '100%',
+                    }}
+                  >
+                    <iframe
+                      src={pdfPreviewUrl}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                      }}
+                      title="Worksheet PDF Preview"
+                    />
+                  </Box>
+                ) : isGeneratingPreview ? (
+                  <Box
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      height: '800px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#fafafa',
+                    }}
+                  >
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      height: '800px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#fafafa',
+                    }}
+                  >
+                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', color: '#999', fontSize: '1.1rem' }}>
+                      📄 Generate a worksheet to see PDF preview
+                    </Typography>
+                  </Box>
+                )
               ) : (
                 <Box
                   sx={{
                     border: '1px solid #e0e0e0',
                     borderRadius: 2,
-                    height: '600px',
+                    height: '800px',
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
@@ -780,6 +843,11 @@ export default function ResourceGenerator() {
                   variant="outlined"
                   size="large"
                   onClick={() => {
+                    if (pdfPreviewUrl) {
+                      URL.revokeObjectURL(pdfPreviewUrl);
+                      setPdfPreviewUrl(null);
+                    }
+
                     setSelectedSubject('');
                     setSelectedMainTopic('');
                     setSelectedSubTopic('');
@@ -790,6 +858,7 @@ export default function ResourceGenerator() {
                     setGenerationError(null);
                     setIsEditMode(false);
                     setEditableContent(null);
+                    setIsGeneratingPreview(false);
                   }}
                   sx={{
                     borderColor: '#dc3545',
@@ -816,3 +885,4 @@ export default function ResourceGenerator() {
     </Box>
   );
 }
+
