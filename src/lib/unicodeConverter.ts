@@ -24,8 +24,50 @@ const superscriptMap: Record<string, string> = {
     '=': '⁼',
     '(': '⁽',
     ')': '⁾',
-    'n': 'ⁿ',
+    'a': 'ᵃ',
+    'b': 'ᵇ',
+    'c': 'ᶜ',
+    'd': 'ᵈ',
+    'e': 'ᵉ',
+    'f': 'ᶠ',
+    'g': 'ᵍ',
+    'h': 'ʰ',
     'i': 'ⁱ',
+    'j': 'ʲ',
+    'k': 'ᵏ',
+    'l': 'ˡ',
+    'm': 'ᵐ',
+    'n': 'ⁿ',
+    'o': 'ᵒ',
+    'p': 'ᵖ',
+    'r': 'ʳ',
+    's': 'ˢ',
+    't': 'ᵗ',
+    'u': 'ᵘ',
+    'v': 'ᵛ',
+    'w': 'ʷ',
+    'x': 'ˣ',
+    'y': 'ʸ',
+    'z': 'ᶻ',
+    'A': 'ᴬ',
+    'B': 'ᴮ',
+    'D': 'ᴰ',
+    'E': 'ᴱ',
+    'G': 'ᴳ',
+    'H': 'ᴴ',
+    'I': 'ᴵ',
+    'J': 'ᴶ',
+    'K': 'ᴷ',
+    'L': 'ᴸ',
+    'M': 'ᴹ',
+    'N': 'ᴺ',
+    'O': 'ᴼ',
+    'P': 'ᴾ',
+    'R': 'ᴿ',
+    'T': 'ᵀ',
+    'U': 'ᵁ',
+    'V': 'ⱽ',
+    'W': 'ᵂ',
 };
 
 const subscriptMap: Record<string, string> = {
@@ -149,13 +191,19 @@ export function convertToUnicode(text: string): string {
         return func + '⁻¹';
     });
 
-    // 2. Convert fractions: 1/2 → ½
+    // 2. Convert Greek letters  pi → π, theta → θ 
+    Object.entries(greekLetterMap).forEach(([name, symbol]) => {
+        const regex = new RegExp(`\\b${name}\\b`, 'g');
+        result = result.replace(regex, symbol);
+    });
+
+    // 3. Convert fractions: 1/2 → ½
     Object.entries(fractionMap).forEach(([fraction, unicode]) => {
         const regex = new RegExp(fraction.replace('/', '\\/'), 'g');
         result = result.replace(regex, unicode);
     });
 
-    // 3. Convert complex exponents BEFORE simple ones: e^(2x) → e^⁽²ˣ⁾
+    // 4. Convert complex exponents
     // But skip if it's inverse trig (already converted in step 1)
     result = result.replace(/\^(\([^)]+\))/g, (match, content, offset, string) => {
         // Check if this is preceded by a trig function (which means it's inverse trig)
@@ -164,33 +212,30 @@ export function convertToUnicode(text: string): string {
             return match;
         }
 
-        const inner = content.slice(1, -1).trim();
+        let inner = content.slice(1, -1).trim();
         if (inner === '-1' || inner === '1') {
             return match;
         }
 
-        const converted = toSuperscript(content);
-        return converted;
+        inner = inner.replace(/\^([0-9+-]+)/g, (_match: string, exp: string) => {
+            return toSuperscript(exp);
+        });
+
+        return '<sup>' + inner + '</sup>';
     });
 
-    // 4. Convert simple exponents: x^2 → x²
+    // 5. Convert simple exponents: x^2 → x²
     result = result.replace(/\^([0-9+-]+)/g, (match, exp) => {
         return toSuperscript(exp);
     });
 
-    // 5. Convert subscripts: H_2O → H₂O
+    // 6. Convert subscripts: H_2O → H₂O
     result = result.replace(/_([0-9a-z+-]+)/gi, (match, sub) => {
         return toSubscript(sub);
     });
 
-    // 6. Convert Greek letters: pi → π, theta → θ
-    Object.entries(greekLetterMap).forEach(([name, symbol]) => {
-        const regex = new RegExp(`\\b${name}\\b`, 'g');
-        result = result.replace(regex, symbol);
-    });
-
-    // 7. Convert sqrt to √
-    result = result.replace(/\bsqrt\b/g, '√');
+    // 7. Convert sqrt to √ (anywhere it appears)
+    result = result.replace(/sqrt/g, '√');
 
     // 8. Convert degree symbol
     result = result.replace(/\bdegrees?\b/gi, '°');
@@ -204,6 +249,8 @@ export function convertToUnicode(text: string): string {
     result = result.replace(/!=/g, '≠');
     result = result.replace(/\+\/-/g, '±');
     result = result.replace(/\*\*/g, '×');
+
+    result = result.replace(/\*/g, ' ');
 
     return result;
 }

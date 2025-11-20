@@ -6,6 +6,13 @@ interface HTMLWorksheetTemplateProps {
     generatedContent?: any;
 }
 
+function renderTextWithHTML(text: string) {
+    if (text.includes('<sup>') || text.includes('</sup>')) {
+        return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    }
+    return text;
+}
+
 export const HTMLWorksheetTemplate: React.FC<HTMLWorksheetTemplateProps> = ({
     resourceData,
     generatedContent,
@@ -178,7 +185,7 @@ export const HTMLWorksheetTemplate: React.FC<HTMLWorksheetTemplateProps> = ({
 
                 <div style={styles.header}>
                     <h1 style={styles.title}>
-                        {content.worksheetTitle || `${resourceData.subject} - ${resourceData.topic}`}
+                        {renderTextWithHTML(content.worksheetTitle || `${resourceData.subject} - ${resourceData.topic}`)}
                     </h1>
                 </div>
 
@@ -186,7 +193,7 @@ export const HTMLWorksheetTemplate: React.FC<HTMLWorksheetTemplateProps> = ({
                     <div style={styles.section}>
                         <h2 style={styles.sectionTitle}>Instructions</h2>
                         <p style={styles.instructionsText}>
-                            {content.instructions || "Please complete all questions below. Show your work where applicable."}
+                            {renderTextWithHTML(content.instructions || "Please complete all questions below. Show your work where applicable.")}
                         </p>
                     </div>
 
@@ -197,7 +204,7 @@ export const HTMLWorksheetTemplate: React.FC<HTMLWorksheetTemplateProps> = ({
                                 <div style={styles.questionRow}>
                                     <span style={styles.questionNumber}>{num}.</span>
                                     <span style={styles.questionText}>
-                                        {content[`question${num}`] || `Question ${num}`}
+                                        {renderTextWithHTML(content[`question${num}`] || `Question ${num}`)}
                                     </span>
                                 </div>
                                 <div style={styles.answerSpace} />
@@ -223,12 +230,12 @@ export const HTMLWorksheetTemplate: React.FC<HTMLWorksheetTemplateProps> = ({
                                     <div style={styles.questionRow}>
                                         <span style={styles.questionNumber}>{num}.</span>
                                         <span style={styles.questionText}>
-                                            {content[`question${num}`] || `Question ${num}`}
+                                            {renderTextWithHTML(content[`question${num}`] || `Question ${num}`)}
                                         </span>
                                     </div>
                                     <div style={styles.answerText}>
                                         <span style={styles.answerLabel}>Answer:</span>
-                                        {content[`answer${num}`] || "Answer not provided."}
+                                        {renderTextWithHTML(content[`answer${num}`] || "Answer not provided.")}
                                     </div>
                                 </div>
                             ))}
